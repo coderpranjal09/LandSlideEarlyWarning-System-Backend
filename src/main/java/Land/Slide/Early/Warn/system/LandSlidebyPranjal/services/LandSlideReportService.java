@@ -28,140 +28,102 @@ public class LandSlideReportService {
     private final LandSlideReportRepository landSlideReportRepository;
     private final CloudinaryService cloudinaryService;
     private final RestTemplate restTemplate;
- private ResponseDto responseDto;
+
     private static final String MODEL_API =
             "https://user-camera-model-api-main.onrender.com/predict-disaster";
 
     private static final double MIN_CONFIDENCE = 0.60;
 
-    public ResponseDto createReport(
-            LandSlideReportDto landSlideReportDto) {
+    public ResponseDto createReport(LandSlideReportDto landSlideReportDto) {
 
         MultipartFile image = landSlideReportDto.getImage();
 
-        // Check image
         if (image == null || image.isEmpty()) {
             throw new BadRequestException("Image is not provided");
         }
 
         try {
 
-
-
             HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-            headers.setContentType(
-                    MediaType.MULTIPART_FORM_DATA
-            );
+            ByteArrayResource imageResource = new ByteArrayResource(image.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return image.getOriginalFilename() != null
+                            ? image.getOriginalFilename()
+                            : "upload.jpg";
+                }
+            };
 
-            ByteArrayResource imageResource =
-                    new ByteArrayResource(image.getBytes()) {
-
-                        @Override
-                        public String getFilename() {
-                            return image.getOriginalFilename();
-                        }
-                    };
-
-            MultiValueMap<String, Object> body =
-                    new LinkedMultiValueMap<>();
-
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", imageResource);
 
             HttpEntity<MultiValueMap<String, Object>> request =
                     new HttpEntity<>(body, headers);
 
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    MODEL_API,
+                    HttpMethod.POST,
+                    request,
+                    Map.class
+            );
 
-
-            ResponseEntity<Map> response =
-                    restTemplate.exchange(
-                            MODEL_API,
-                            HttpMethod.POST,
-                            request,
-                            Map.class
-                    );
-
-            Map<String, Object> aiResponse =
-                    response.getBody();
+            Map<String, Object> aiResponse = response.getBody();
 
             if (aiResponse == null) {
-                throw new RuntimeException(
-                        "AI model returned empty response"
-                );
+                throw new RuntimeException("AI model returned empty response");
             }
 
-
-            Boolean landslide =
-                    (Boolean) aiResponse.get("landslide");
-
-            Number confidence =
-                    (Number) aiResponse.get("confidence");
+            Boolean landslide = (Boolean) aiResponse.get("landslide");
+            Number confidence = (Number) aiResponse.get("confidence");
 
             if (landslide == null || confidence == null) {
-                throw new RuntimeException(
-                        "Invalid response from AI model"
+                throw new RuntimeException("Invalid response from AI model");
+            }
+
+            if (!landslide) {
+                throw new BadRequestException(
+                        "Report rejected: the AI model did not detect a landslide in this image."
                 );
             }
 
-
-            if (!landslide ||
-                    confidence.doubleValue() < MIN_CONFIDENCE) {
-
-                return  new ResponseDto("Report rejected. Landslide confidence is below 60%");
+            if (confidence.doubleValue() < MIN_CONFIDENCE) {
+                throw new BadRequestException(
+                        "Report rejected: landslide confidence ("
+                                + String.format("%.2f", confidence.doubleValue() * 100)
+                                + "%) is below the required "
+                                + String.format("%.0f", MIN_CONFIDENCE * 100)
+                                + "% threshold."
+                );
             }
 
+            String imageUrl = cloudinaryService.uploadImage(image);
 
-            String imageUrl =
-                    cloudinaryService.uploadImage(image);
-
-
-            LandSlideReports report =
-                    new LandSlideReports();
-
-            report.setName(
-                    landSlideReportDto.getName()
-            );
-
-            report.setMobileNo(
-                    landSlideReportDto.getMobileNo()
-            );
-
-            report.setDescription(
-                    landSlideReportDto.getDescription()
-            );
-
-            report.setLatitude(
-                    landSlideReportDto.getLatitude()
-            );
-
-            report.setLongitude(
-                    landSlideReportDto.getLongitude()
-            );
-
+            LandSlideReports report = new LandSlideReports();
+            report.setName(landSlideReportDto.getName());
+            report.setMobileNo(landSlideReportDto.getMobileNo());
+            report.setDescription(landSlideReportDto.getDescription());
+            report.setLatitude(landSlideReportDto.getLatitude());
+            report.setLongitude(landSlideReportDto.getLongitude());
             report.setImageUrl(imageUrl);
 
-
-            LandSlideReports saved =
-                    landSlideReportRepository.save(report);
-
-
+            LandSlideReports saved = landSlideReportRepository.save(report);
 
             return new ResponseDto(
-                    "Landslide report submitted successfully. Report ID: "
-                            + saved.getId()
+                    "Landslide report submitted successfully. Report ID: " + saved.getId()
             );
 
+        } catch (BadRequestException bre) {
+            throw bre;
         } catch (Exception e) {
-
             throw new RuntimeException(
-                    "Error while processing landslide report "+e.getMessage(),e
+                    "Error while processing landslide report: " + e.getMessage(), e
             );
         }
     }
 
-    public List<LandSlideReports> getAllReports(){
-       List< LandSlideReports> landSlideReports = landSlideReportRepository.findAll();
-       return  landSlideReports;
+    public List<LandSlideReports> getAllReports() {
+        return landSlideReportRepository.findAll();
     }
-
 }
