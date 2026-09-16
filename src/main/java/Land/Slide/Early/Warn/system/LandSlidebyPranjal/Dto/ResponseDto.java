@@ -1,10 +1,15 @@
 package Land.Slide.Early.Warn.system.LandSlidebyPranjal.Dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.*;
 
 @Data
-@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 public class ResponseDto {
     private String message;
+
+    public ResponseDto(String s) {
+        this.setMessage(s);
+    }
 }

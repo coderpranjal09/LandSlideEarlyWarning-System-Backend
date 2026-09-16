@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 @Data
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class NodeHistoryReqDto {
     private long nodeId;
     private double soilMoisture;

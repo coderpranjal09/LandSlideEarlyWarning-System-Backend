@@ -3,12 +3,11 @@ package Land.Slide.Early.Warn.system.LandSlidebyPranjal.Dto;
 import lombok.*;
 
 import java.time.LocalDateTime;
-
+@AllArgsConstructor
+@NoArgsConstructor
 @Data
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class NodeHistoryResDto {
     private long nodeId;
     private double soilMoisture;

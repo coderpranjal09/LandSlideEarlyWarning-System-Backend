@@ -12,6 +12,7 @@ public class Home {
 
         @GetMapping("/")
                 public ResponseEntity<ResponseDto> home(){
+            ResponseDto responseDto = new ResponseDto();
             return ResponseEntity.ok( new ResponseDto("server is running "));
     }
 }

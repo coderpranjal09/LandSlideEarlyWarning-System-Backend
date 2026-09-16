@@ -3,9 +3,9 @@ package Land.Slide.Early.Warn.system.LandSlidebyPranjal.Dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @AllArgsConstructor
 @NoArgsConstructor
+
 @Data
 public class NodeIncomingDto {
     private long id;
